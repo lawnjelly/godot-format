@@ -22,10 +22,11 @@
 // g++ godot_format.cpp -o godot_format
 //
 // Running
-// ./godot_format --verbose --dryrun /home/juan/godot/drivers
+// ./godot_format --verbose --dryrun --sure /home/juan/godot/drivers
 //
 // --verbose gives extra log info
 // --dryrun is a good idea especially first time, it does everything except write the modified files
+// --sure omits the question before modifying each file. In most cases you should not use this.
 
 // Original files will be renamed to .gf_backup,
 // Modified files will replace the originals.
@@ -47,6 +48,7 @@
 
 bool g_Verbose = false;
 bool g_DryRun = false;
+bool g_SureQuestion = true;
 
 using namespace std;
 
@@ -85,16 +87,15 @@ const char g_szLicence[] = "/***************************************************
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */\n\
 /*************************************************************************/\n\
 \n";
+		
 const int g_iLicenceSize = strlen(g_szLicence);
-
-
 
 class LFolder
 {
 public:
 	bool SetFilename(const char * pszFilename);
 	const char * GetFilename() const {return m_szFilename;}
-
+	
 private:	
 	char m_szFilename[1024];
 };
@@ -115,7 +116,7 @@ public:
 	
 	void SetFilename(const char * pszFilename) {	strcpy(m_szFilename, pszFilename);}
 	const char * GetFilename() const {return m_szFilename;}
-
+	
 	void SetShortName(const char * pszName) {	strcpy(m_szShortName, pszName);}
 	const char * GetShortName() const {return m_szShortName;}
 	
@@ -135,7 +136,7 @@ class LFileTree
 {
 public:
 	bool Run(const char * pszPath);
-
+	
 private:
 	bool ProcessFolder();
 	void FoundFile(struct dirent *dirp, const char * pszPath);
@@ -167,14 +168,14 @@ bool LFolder::SetFilename(const char * pszFilename)
 
 int LFile::GetFileSize(const char * pszFilename)
 {
-    struct stat stat_buf;
-    int rc = stat(pszFilename, &stat_buf);
-    return rc == 0 ? stat_buf.st_size : -1;
+	struct stat stat_buf;
+	int rc = stat(pszFilename, &stat_buf);
+	return rc == 0 ? stat_buf.st_size : -1;
 }
 
 bool LFile::AddLicence(int &buffer_size)
 {
-//	return false;
+	//	return false;
 	
 	// only for certain file types
 	switch (m_Type)
@@ -197,7 +198,7 @@ bool LFile::AddLicence(int &buffer_size)
 	
 	memcpy(&g_BufferLicence[80], pszName, l);
 	
-
+	
 	// compare
 	int comp = memcmp(&g_Buffer[0], &g_BufferLicence[0], g_iLicenceSize);
 	
@@ -206,25 +207,25 @@ bool LFile::AddLicence(int &buffer_size)
 		// licence does not match, add it to the file
 		strcpy(&g_BufferTemp[0], &g_BufferLicence[0]);
 		strcat(&g_BufferTemp[0], &g_Buffer[0]);
-
+		
 		strcpy(&g_Buffer[0], &g_BufferTemp[0]);
 		buffer_size = strlen(&g_Buffer[0]);
-
-
+		
+		
 		if (g_Verbose)
 			cout << "\tadding LICENCE" << endl;
 		
 		return true;
 		// do character by character
-//		for (int n=0; n<g_iLicenceSize; n++)
-//		{
-//			if (g_Buffer[n] != g_BufferLicence[n])
-//			{
-//				cout << g_Buffer[n];
-//			}
-//		}
+		//		for (int n=0; n<g_iLicenceSize; n++)
+		//		{
+		//			if (g_Buffer[n] != g_BufferLicence[n])
+		//			{
+		//				cout << g_Buffer[n];
+		//			}
+		//		}
 		
-//		cout << &g_BufferLicence[0] << endl;
+		//		cout << &g_BufferLicence[0] << endl;
 	}
 	
 	return false;	
@@ -249,15 +250,10 @@ bool LFile::Contract(int &buffer_size)
 		
 		if  ((psz[n] == '{')
 			 && (psz[n+1] == '\n')
-			&& (psz[n+2] == '\n')
-			&& (psz[n+3] == '\t'))
+			 && (psz[n+2] == '\n')
+			 && (psz[n+3] == '\t'))
 		{
-			if (!changed_file)
-			{
-				changed_file = true;
-				//if (g_Verbose)
-				//	cout << "\t" << GetFilename() << endl;
-			}
+			changed_file = true;
 			
 			if (g_Verbose)
 				cout << "\tmatch line " << line << ", { extra blank line" << endl;
@@ -267,31 +263,21 @@ bool LFile::Contract(int &buffer_size)
 		
 		if  ((psz[n] == '\n')
 			 && (psz[n+1] == '\n')
-			&& (psz[n+2] == '}'))
+			 && (psz[n+2] == '}'))
 		{
-			if (!changed_file)
-			{
-				changed_file = true;
-//				if (g_Verbose)
-//					cout << "\t" << GetFilename() << endl;
-			}
+			changed_file = true;
 			
 			if (g_Verbose)
 				cout << "\tmatch line " << line << ", } extra blank line" << endl;
 			g_BufferRemove[n+1] = 1;
 		}
-
+		
 		// double blank lines
 		if  ((psz[n] == '\n')
 			 && (psz[n+1] == '\n')
-			&& (psz[n+2] == '\n'))
+			 && (psz[n+2] == '\n'))
 		{
-			if (!changed_file)
-			{
-				changed_file = true;
-//				if (g_Verbose)
-//					cout << "\t" << GetFilename() << endl;
-			}
+			changed_file = true;
 			
 			if (g_Verbose)
 				cout << "\tmatch line " << line << ", extra blank line" << endl;
@@ -301,20 +287,25 @@ bool LFile::Contract(int &buffer_size)
 		if  ((psz[n] == '\t')
 			 && (psz[n+1] == '\n'))
 		{
-			if (!changed_file)
-			{
-				changed_file = true;
-//				if (g_Verbose)
-//					cout << "\t" << GetFilename() << endl;
-			}
+			changed_file = true;
 			
 			if (g_Verbose)
 				cout << "\tmatch line " << line << ", extra tab" << endl;
-			g_BufferRemove[n] = 0;
+			g_BufferRemove[n] = 1;
+		}
+		
+		if  ((psz[n] == ' ')
+			 && (psz[n+1] == '\n'))
+		{
+			changed_file = true;
+			
+			if (g_Verbose)
+				cout << "\tmatch line " << line << ", extra space" << endl;
+			g_BufferRemove[n] = 1;
 		}
 		
 	}
-
+	
 	if (!changed_file)
 		return false;
 	
@@ -346,14 +337,14 @@ bool LFile::Run()
 	int filesize = GetFileSize(GetFilename());
 	if (filesize <= 0)
 		return false;
-
-//	cout << "\t" << GetFilename() << endl;
-
+	
+	//	cout << "\t" << GetFilename() << endl;
+	
 	
 	int max_buffer_size = filesize + g_iLicenceSize + 1;
 	
 	// read the data
-    FILE * pFile = fopen(GetFilename(), "rb");
+	FILE * pFile = fopen(GetFilename(), "rb");
 	if (!pFile)
 	{
 		if (g_Verbose)
@@ -363,7 +354,7 @@ bool LFile::Run()
 	}
 	g_Buffer.resize(max_buffer_size);
 	g_BufferTemp.resize(max_buffer_size);
-
+	
 	// make a buffer to indicate which chars to remove from the final stream
 	g_BufferRemove.resize(max_buffer_size);
 	memset(&g_BufferRemove[0], 0, max_buffer_size); 
@@ -385,7 +376,7 @@ bool LFile::Run()
 	{
 		changed_file = true;
 	}
-
+	
 	if (!changed_file)
 		return false;
 	
@@ -394,28 +385,42 @@ bool LFile::Run()
 	if (g_DryRun)
 		return false;
 	
+	if (g_SureQuestion)
+	{
+		cout << "\tare you sure?(y/n)" << endl;
+		
+		fflush(stdin);
+		char cSure = getchar();
+		
+		if (cSure != 'y')
+		{
+			cout << "USER chose to abort process." << endl;
+			exit(0);
+		}
+	}	
+	
 	// if we have modified the file, let's create it
 	char szTemp[2048];
 	strcpy(szTemp, GetFilename());
 	strcat(szTemp, ".gf_temp");
-
+	
 	pFile = fopen(szTemp, "wb");
 	if (!pFile)
 		return false;
-
+	
 	fwrite(&g_Buffer[0], 1, buffersize, pFile);
 	
 	fflush(pFile);
 	fclose(pFile);
-
-
+	
+	
 	char szBackup[2048];
 	strcpy(szBackup, GetFilename());
 	strcat(szBackup, ".gf_backup");
 	
 	// delete the original
 	rename(GetFilename(), szBackup);
-//	remove(GetFilename());
+	//	remove(GetFilename());
 	
 	// rename to replace
 	rename(szTemp, GetFilename());
@@ -428,30 +433,30 @@ bool LFile::Run()
 
 void LFileTree::FoundFile(struct dirent *dirp, const char * pszPath)
 {
-//    DupItemInfo inf;
-//    memset (&inf, 0, sizeof (inf));
-    
-    const char * pszName = dirp->d_name;
+	//    DupItemInfo inf;
+	//    memset (&inf, 0, sizeof (inf));
+	
+	const char * pszName = dirp->d_name;
 	
 	LFile::eType ftype = IsFileInteresting(pszName);
 	
 	if (ftype == LFile::eType::FT_NONE)
 		return;
 	
-    int l = strlen(pszName);
-    assert (l);
-    
-//    cout << "\t" << pszName << endl;
-
+	int l = strlen(pszName);
+	assert (l);
+	
+	//    cout << "\t" << pszName << endl;
+	
 	// create a new folder in the list of folders by appending the folder name to the path
-    int lp = strlen(pszPath);
-    int ln = strlen(pszName);
-    
-    char path[1024];
+	int lp = strlen(pszPath);
+	int ln = strlen(pszName);
+	
+	char path[1024];
 	
 	if ((lp + ln) > 1022)
 		return;
-
+	
 	strcpy (path, pszPath);
 	strcat (path, pszName);
 	
@@ -461,7 +466,21 @@ void LFileTree::FoundFile(struct dirent *dirp, const char * pszPath)
 	file.m_Type = ftype;
 	
 	m_Files.push_back(file);
-   
+	
+}
+
+bool EndsIn(const char * psz, const char * pszEnd)
+{
+	int l = strlen(psz);
+	int le = strlen(pszEnd);
+	
+	if (l <= le)
+		return false;
+	
+	if (!memcmp(&psz[l-le], pszEnd, le))
+		return true;
+	
+	return false;
 }
 
 LFile::eType LFileTree::IsFileInteresting(const char * pszFilename)
@@ -470,22 +489,28 @@ LFile::eType LFileTree::IsFileInteresting(const char * pszFilename)
 		return LFile::eType::FT_NONE;
 	
 	int l = strlen(pszFilename);
-	if (l < 7)
+	if (l < 9)
 		return LFile::eType::FT_NONE;
 
-	if (!memcmp(&pszFilename[l-2], ".h", 2))	
+	if (EndsIn(pszFilename, ".h"))
 	{
 		// only if NOT a gen file!
-		if (memcmp(&pszFilename[l-6], ".gen.h", 6) != 0)
-			return LFile::eType::FT_H;
+		if (EndsIn(pszFilename, ".gen.h"))
+			return LFile::eType::FT_NONE;
+			
+		return LFile::eType::FT_H;
 	}
-
-	if (!memcmp(&pszFilename[l-4], ".cpp", 4))	
+	
+	if (EndsIn(pszFilename, ".cpp"))
 	{
+		// only if NOT a gen file!
+		if (EndsIn(pszFilename, ".gen.cpp"))
+			return LFile::eType::FT_NONE;
+			
 		return LFile::eType::FT_CPP;
 	}
-
-	if (!memcmp(&pszFilename[l-5], ".glsl", 5))	
+	
+	if (EndsIn(pszFilename, ".glsl"))
 	{
 		return LFile::eType::FT_GLSL;
 	}
@@ -496,27 +521,27 @@ LFile::eType LFileTree::IsFileInteresting(const char * pszFilename)
 
 void LFileTree::FoundFolder(struct dirent *dirp, const char * pszPath)
 {
-    const char * pszName = dirp->d_name;
-    
-    // check for specials : . and ..
-    if (!strcmp(pszName, "."))
-        return;
-    
-    if (!strcmp(pszName, ".."))
-        return;
-    
-    // create a new folder in the list of folders by appending the folder name to the path
-    int lp = strlen(pszPath);
-    int ln = strlen(pszName);
-    
-    char path[1024];
+	const char * pszName = dirp->d_name;
+	
+	// check for specials : . and ..
+	if (!strcmp(pszName, "."))
+		return;
+	
+	if (!strcmp(pszName, ".."))
+		return;
+	
+	// create a new folder in the list of folders by appending the folder name to the path
+	int lp = strlen(pszPath);
+	int ln = strlen(pszName);
+	
+	char path[1024];
 	
 	if ((lp + ln) > 1022)
 		return;
 	
 	strcpy (path, pszPath);
 	strcat (path, pszName);
-
+	
 	LFolder fold;
 	fold.SetFilename(path);
 	m_Folders.push_back(fold);
@@ -542,7 +567,7 @@ bool LFileTree::Run(const char * pszPath)
 	for (int n=0; n<m_Files.size(); n++)
 	{
 		m_Files[n].Run();
-//			return true;
+		//			return true;
 	}
 	
 	return true;
@@ -553,41 +578,41 @@ bool LFileTree::ProcessFolder()
 {
 	LFolder fold = m_Folders[0];
 	const char * pszPath = fold.GetFilename();
-
+	
 	// delete folder from list
 	m_Folders[0] = m_Folders[m_Folders.size()-1];
 	m_Folders.pop_back();
-
 	
-//    cout << "Folder\t" << pszPath << endl;
-    
-    DIR *dp;
-    struct dirent *dirp;
-    
-    if((dp = opendir(pszPath)) == 0)
-    {
-        cout << "ERROR(" << errno << ") opening " << pszPath << endl;
-        return false;
-    }
-    
-    while ((dirp = readdir(dp)) != 0)
-    {
-        
-        switch (dirp->d_type)
-        {
-        case DT_REG:
-            // do nothing, regular file
-            FoundFile(dirp, pszPath);
-            break;
-        case DT_DIR:
-            FoundFolder(dirp, pszPath);
-            break;
-        default:
-            continue; // ignore special files
-            break;
-        }
-    }
-    closedir(dp);
+	
+	//    cout << "Folder\t" << pszPath << endl;
+	
+	DIR *dp;
+	struct dirent *dirp;
+	
+	if((dp = opendir(pszPath)) == 0)
+	{
+		cout << "ERROR(" << errno << ") opening " << pszPath << endl;
+		return false;
+	}
+	
+	while ((dirp = readdir(dp)) != 0)
+	{
+		
+		switch (dirp->d_type)
+		{
+		case DT_REG:
+			// do nothing, regular file
+			FoundFile(dirp, pszPath);
+			break;
+		case DT_DIR:
+			FoundFolder(dirp, pszPath);
+			break;
+		default:
+			continue; // ignore special files
+			break;
+		}
+	}
+	closedir(dp);
 	
 	
 	return true;
@@ -599,7 +624,7 @@ int main(int argc, char *argv[])
 	
 	bool args_wrong = false;
 	const char * pszPath = 0;
-
+	
 	for (int n=1; n<argc; n++)
 	{
 		const char * pArg = argv[n];
@@ -613,6 +638,11 @@ int main(int argc, char *argv[])
 		{
 			g_DryRun = true;
 			cout << "DRYRUN" << endl;
+		}
+		else if (!strcmp(pArg, "--sure"))
+		{
+			g_SureQuestion = false;
+			cout << "SURE" << endl;
 		}
 		else
 		{
@@ -638,13 +668,13 @@ int main(int argc, char *argv[])
 	
 	LFileTree tree;
 	
-//	tree.Run("/home/baron/Apps/Godot4/godot/drivers");
-//	tree.Run("/home/baron/Apps/Godot4/godot/platform/linuxbsd");
-//	tree.Run("/home/baron/Apps/Godot4/godot/platform/windows");
+	//	tree.Run("/home/baron/Apps/Godot4/godot/drivers");
+	//	tree.Run("/home/baron/Apps/Godot4/godot/platform/linuxbsd");
+	//	tree.Run("/home/baron/Apps/Godot4/godot/platform/windows");
 	
 	tree.Run(pszPath);
 	
 	cout << "completed OK" << endl;
 	
-    return 0;
+	return 0;
 }
