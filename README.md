@@ -8,6 +8,8 @@ __This program is DESTRUCTIVE, be sure to commit your code as a backup BEFORE ru
 
 This simple program (linux only so far, feel free to #define windows file functions) automatically edits files to pass Godot static checks. It does the changes that clang format cannot.
 
+Although the existing pre-commit hooks can perform some changes to your source to meet the static checks, there are a number of extra checks which are not automatically corrected, and this can extremely annoying and time consuming when preparing large PRs. Hence why I wrote this program.
+
 It operates RECURSIVELY through folders on .h, .cpp, .glsl files (but not .gen.h)
 
 * Adds licences
