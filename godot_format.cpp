@@ -380,7 +380,7 @@ bool LFile::Run()
 	if (!changed_file)
 		return false;
 	
-	cout << "modifed file : " << GetFilename() << endl;
+	cout << "MODIFYING : " << endl << GetFilename() << endl;
 	
 	if (g_DryRun)
 		return false;
