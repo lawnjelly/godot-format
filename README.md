@@ -1,5 +1,5 @@
 # godot-format
-Formats .h, .cpp etc files to pass Godot Engine static checks
+Formats .h, .cpp etc files to pass Godot Engine static checks\
 Version 0.01
 
 ### WARNING
